@@ -1,18 +1,24 @@
 """Arrowhead Alarm Panel alarm control panel platform."""
-
 import logging
+from typing import override
 
+from arrowhead_alarm import AlarmState
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
     CodeFormat,
 )
-from homeassistant.core import DOMAIN, HomeAssistant, callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.arrowhead_eci import EciConfigEntry
+from custom_components.arrowhead_eci import ArrowheadEciDataUpdateCoordinator, EciConfigEntry
+
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,118 +29,114 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = config_entry.runtime_data.coordinator
+    
+    area_control_panels = [
+        ArrowheadAlarmAreaControlPanel(area_id, area["enabled"], coordinator, config_entry)
+        for area_id, area in config_entry.data["areas"].items()
+    ]
 
-    async_add_entities([ArrowheadAlarmControlPanel(coordinator, config_entry, panel_config)])
+    async_add_entities(area_control_panels)
 
 
-class ArrowheadAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
+class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
     """Representation of an Arrowhead Alarm Panel."""
 
     def __init__(
         self,
-        coordinator: ArrowheadDataUpdateCoordinator,
+        area_id: int,
+        is_enabled: bool,
+        coordinator: ArrowheadEciDataUpdateCoordinator,
         config_entry: EciConfigEntry,
-        panel_config: dict[str, Any],
     ) -> None:
         """Initialize the alarm control panel."""
-        super().__init__(coordinator)
-        self._config_entry = config_entry
-        self._panel_config = panel_config
-        self._attr_name = f"Arrowhead {panel_config['name']}"
-        self._attr_unique_id = f"{config_entry.entry_id}_alarm_panel"
+        super().__init__(coordinator)  # ty: ignore[invalid-argument-type]
+        self.area_id = area_id
+        self.is_enabled = is_enabled
+        self.coordinator: ArrowheadEciDataUpdateCoordinator = coordinator
+        self.config_entry = config_entry
 
-        # Set supported features based on panel capabilities
-        self._attr_supported_features = (
-            AlarmControlPanelEntityFeature.ARM_AWAY | AlarmControlPanelEntityFeature.ARM_HOME
+    def device_info(self) -> DeviceInfo | None:
+        return DeviceInfo(
+            name=f"Alarm Panel - Area {self.area_id}",
+            identifiers={(DOMAIN, f"area_{self.area_id}"
+                                  f"-{self.config_entry.data['serial_number']}")},
+            manufacturer="Arrowhead Alarm Products",
         )
 
-        # Set code format - no code required since PIN is configured
-        self._attr_code_format = CodeFormat.NUMBER
-        self._attr_code_arm_required = False  # PIN already configured in client
+    @override
+    def enabled(self) -> bool:
+        """Return whether the area is enabled."""
+        return self.is_enabled
+    
+    @override
+    def name(self) -> str | UndefinedType | None:
+        return f"Arrowhead Alarm Area {self.area_id}"
 
-        # Set device info
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": f"Arrowhead {panel_config['name']}",
-            "manufacturer": "Arrowhead Alarm Products",
-            "model": panel_config["name"],
-            "sw_version": self.coordinator.data.get("firmware_version")
-            if self.coordinator.data
-            else None,
-        }
+    @override
+    def code_format(self) -> CodeFormat | None:
+        """Return the code format."""
+        return CodeFormat.NUMBER
+
+    @override
+    def code_arm_required(self) -> bool:
+        """Whether the code is required for arm actions."""
+        return False
+
+    @override
+    def supported_features(self) -> AlarmControlPanelEntityFeature:
+        """Return the list of supported features."""
+        return AlarmControlPanelEntityFeature.ARM_AWAY | AlarmControlPanelEntityFeature.ARM_HOME
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:
-        """Return the state of the alarm control panel using new enum."""
-        if not self.coordinator.data:
+        """Return the state of the alarm control panel."""
+        area = self.coordinator.state.areas.get(self.area_id)
+
+        if area is None:
             return AlarmControlPanelState.DISARMED
 
-        data = self.coordinator.data
-
-        # Check for alarm condition first
-        if data.get("alarm", False):
-            return AlarmControlPanelState.TRIGGERED
-
-        # Check for arming/pending state
-        if data.get("arming", False):
-            return AlarmControlPanelState.PENDING
-
-        # Check armed states
-        if data.get("armed", False):
-            if data.get("stay_mode", False):
+        match area.state:
+            case AlarmState.DISARMED:
+                return AlarmControlPanelState.DISARMED
+            case AlarmState.ARMED_STAY:
                 return AlarmControlPanelState.ARMED_HOME
-            else:
+            case AlarmState.ARMED_AWAY:
                 return AlarmControlPanelState.ARMED_AWAY
+            case AlarmState.ALARM_TRIGGERED:
+                return AlarmControlPanelState.TRIGGERED
+            case AlarmState.ARMING_AWAY:
+                return AlarmControlPanelState.ARMING
+            case AlarmState.ARMING_STAY:
+                return AlarmControlPanelState.ARMING
+            case _:
+                return AlarmControlPanelState.DISARMED
 
-        return AlarmControlPanelState.DISARMED
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data is not None
-            and self.coordinator.data.get("connection_state") == "connected"
-        )
+        return True
 
-    async def disarm(self, code: Optional[str] = None) -> None:
+    async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
-        _LOGGER.info("Disarming %s", self._attr_name)
-        success = await self.coordinator.async_disarm()
+        if code is None:
+            raise HomeAssistantError("Code is required for disarming the alarm")
+        try:
+            int_code = int(code)
+        except ValueError as e:
+            raise HomeAssistantError("Invalid code format. Only numbers are allowed.") from e
+        await self.coordinator.disarm(self.area_id, int_code)
 
-        if not success:
-            _LOGGER.error("Failed to disarm %s", self._attr_name)
-
-    async def async_alarm_arm_away(self, code: Optional[str] = None) -> None:
-        """Send arm away command."""
-        _LOGGER.info("Arming %s (away mode)", self._attr_name)
-        success = await self.coordinator.async_arm_away()
-
-        if not success:
-            _LOGGER.error("Failed to arm %s (away mode)", self._attr_name)
-
-    async def async_alarm_arm_home(self, code: Optional[str] = None) -> None:
+    async def async_alarm_arm_home(self, code: str | None = None) -> None:
         """Send arm home command."""
-        _LOGGER.info("Arming %s (stay mode)", self._attr_name)
+        await self.coordinator.arm_stay(self.area_id)
 
-        # Add debug logging to see what's happening
-        _LOGGER.debug(
-            "Coordinator data before arm_stay: %s",
-            list(self.coordinator.data.keys()) if self.coordinator.data else "No data",
-        )
-        _LOGGER.debug("Client connection state: %s", self.coordinator.client.is_connected)
-
-        success = await self.coordinator.async_arm_stay()
-
-        if success:
-            _LOGGER.info("Successfully armed %s in stay mode", self._attr_name)
-        else:
-            _LOGGER.error("Failed to arm %s (stay mode)", self._attr_name)
-            # Add additional debugging
-            _LOGGER.debug(
-                "Coordinator data after failed arm_stay: %s",
-                list(self.coordinator.data.keys()) if self.coordinator.data else "No data",
-            )
+    async def async_alarm_arm_away(self, code: str | None = None) -> None:
+        """Send arm away command."""
+        await self.coordinator.arm_away(self.area_id)
 
     @callback
     def _handle_coordinator_update(self) -> None:

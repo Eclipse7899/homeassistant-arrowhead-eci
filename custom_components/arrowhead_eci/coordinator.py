@@ -1,6 +1,7 @@
 """Data update coordinator for Arrowhead Alarm Panel."""
 import logging
 from enum import Enum
+from typing import TypedDict
 
 from arrowhead_alarm import ArmingMode, LoginCredentials, Mode2Client, PanelState
 from homeassistant.config_entries import ConfigEntry
@@ -21,8 +22,11 @@ class ConnectionState(Enum):
     CONNECTED = "connected"
     RECONNECTING = "reconnecting"
 
+class EciRuntimeData(TypedDict):
+    """Class to hold your data."""
+    panel_state: PanelState
 
-class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[PanelState]):
+class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         super().__init__(
             hass,
@@ -41,7 +45,14 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[PanelState]):
             creds = LoginCredentials(self.user, self.pwd)
 
         self._client = Mode2Client(host=self.host, port=self.port, credentials=creds)
-        self._client.state_publisher.subscribe(self.async_set_updated_data)
+        self._client.state_publisher.subscribe(self._on_panel_state_update)
+        self.state = self._client.state
+
+
+
+    def _on_panel_state_update(self, state: PanelState):
+        self.state = state
+        self.async_set_updated_data({"panel_state": state})
 
     async def disarm(self, area: int, pin: int):
         """Disarm the alarm."""

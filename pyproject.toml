@@ -5,8 +5,8 @@ description = "Home Assistant custom integration"
 requires-python = ">=3.13"
 dependencies = [
     "homeassistant",
-    "arrowhead-alarm",
-    "voluptuous"
+    "arrowhead-alarm>=2.0.1",
+    "voluptuous",
 ]
 
 [dependency-groups]

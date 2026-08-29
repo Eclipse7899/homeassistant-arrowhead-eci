@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to the panel",
+        "description": "Enter the panel address and port, and optionally enter the username and password.",
+        "data": {
+          "host": "Panel address",
+          "port": "Panel port",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the panel",
+      "timeout": "Connection timeout, please check the address and port",
+      "invalid_auth": "Invalid authentication",
+      "invalid_protocol": "Received invalid response from the panel",
+      "missing_host_port": "Host and port are required",
+      "missing_username": "Username is required when password is provided",
+      "missing_password": "Password is required when username is provided",
+      "unknown": "Unknown error"
+    }
+  }
+}

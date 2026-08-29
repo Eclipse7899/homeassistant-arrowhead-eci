@@ -1,56 +1,98 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from arrowhead_alarm import LoginCredentials, Mode2Client, PanelVersion
+from arrowhead_alarm.exceptions import AuthError
+from arrowhead_alarm.protocol.defaults import DEFAULT_MAX_AREAS, DEFAULT_MAX_ZONES
+from arrowhead_alarm.protocol.exceptions import ProtocolError
 from homeassistant.config_entries import (
-    ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlow,
 )
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
+    CONF_PORT,
     CONF_USERNAME,
 )
-from homeassistant.core import DOMAIN, HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
+
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_HOST, description={"suggested_value": "10.10.10.1"}): str,
-        vol.Required(CONF_USERNAME, description={"suggested_value": "test"}): str,
-        vol.Required(CONF_PASSWORD, description={"suggested_value": "1234"}): str,
-    }
-)
+STEP_USER_DATA_SCHEMA = vol.Schema({
+    vol.Required(CONF_HOST, description={"suggested_value": "10.10.10.1"}): cv.string,
+    vol.Required(CONF_PORT, description={"suggested_value": 9000}): cv.port,
+    vol.Optional(CONF_USERNAME, description={"suggested_value": "admin"}): cv.string,
+    vol.Optional(CONF_PASSWORD): cv.string,
+    vol.Required("max_areas", description={"suggested_value": DEFAULT_MAX_AREAS}): NumberSelector(
+        NumberSelectorConfig(
+            min=1,
+            max=DEFAULT_MAX_AREAS,
+            step=1,
+            mode=NumberSelectorMode.SLIDER,
+        )
+    ),
+    vol.Required("max_zones", description={"suggested_value": DEFAULT_MAX_ZONES}): NumberSelector(
+        NumberSelectorConfig(
+            min=1,
+            max=DEFAULT_MAX_ZONES,
+            step=1,
+            mode=NumberSelectorMode.SLIDER,
+        )
+    ),
+})
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    api = PushAPI(data[CONF_HOST], data[CONF_USERNAME], data[CONF_PASSWORD])
-    try:
-        await api.async_connect()
-        # If you cannot connect, raise CannotConnect
-        # If the authentication is wrong, raise InvalidAuth
-    except APIAuthError as err:
-        raise InvalidAuth from err
-    except APIConnectionError as err:
-        raise CannotConnect from err
-    return {"title": f"Example Integration - {data[CONF_HOST]}"}
+@dataclass
+class UserStepData:
+    host: str
+    port: int
+    serial_number: str
+    credentials: LoginCredentials | None
+    max_areas: int
+    max_zones: int
 
+@dataclass
+class AreaConfig:
+    name: str
+    enabled: bool
+
+@dataclass
+class AreasStepData(UserStepData):
+    areas: dict[int, AreaConfig]
+
+FlowConfig = UserStepData | AreasStepData | None
+
+async def validate_input(host, port, credentials: LoginCredentials | None) -> PanelVersion:
+    client = Mode2Client(host, port, credentials)
+    await client.connect()
+    version = await client.query_version()
+    await client.disconnect()
+    return version
 
 class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
     _input_data: dict[str, Any]
 
+    def __init__(self) -> None:
+        self.__flow_config: FlowConfig = None
+
     @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        return ExampleOptionsFlowHandler(config_entry)
+    def _get_credentials(
+        username: str | None,
+        password: str | None
+    ) -> LoginCredentials | None:
+        if username is None or password is None:
+            return None
+
+        return LoginCredentials(username, password)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -58,105 +100,139 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+            host: str | None = user_input.get(CONF_HOST)
+            port: int | None = user_input.get(CONF_PORT)
 
-            if "base" not in errors:
-                # Validation was successful, so create a unique id for this instance of your integration
-                # and create the config entry.
-                await self.async_set_unique_id(info.get("title"))
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=info["title"], data=user_input)
+            username: str | None = user_input.get(CONF_USERNAME)
+            password: str | None = user_input.get(CONF_PASSWORD)
 
-        # Show initial form.
+            max_areas: float | None = user_input.get("max_areas")
+            max_zones: float | None = user_input.get("max_zones")
+
+            if not host or not port:
+                errors["base"] = "missing_host_port"
+
+            elif max_areas is None or max_zones is None:
+                errors["base"] = "missing_max_areas_zones"
+
+            elif (username is None) != (password is None):
+                if username is None:
+                    errors["base"] = "missing_username"
+                else:
+                    errors["base"] = "missing_password"
+
+            else:
+                try:
+                    login_credentials = self._get_credentials(username, password)
+
+                    version = await validate_input(host, port, login_credentials)
+                except AuthError:
+                    errors["base"] = "invalid_auth"
+                except ProtocolError:
+                    errors["base"] = "invalid_protocol"
+                except TimeoutError:
+                    errors["base"] = "timeout"
+                except Exception:
+                    _LOGGER.exception("Unexpected exception")
+                    errors["base"] = "unknown"
+                else:
+                    await self.async_set_unique_id(version.serial_number)
+                    self._abort_if_unique_id_configured()
+                    self.__flow_config = UserStepData(
+                        host,
+                        port,
+                        version.serial_number,
+                        login_credentials,
+                        int(max_areas),
+                        int(max_zones)
+                    )
+                    return await self.async_step_config_areas()
+
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None
+    async def async_step_config_areas(
+        self,
+        user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Add reconfigure step to allow to reconfigure a config entry."""
-        # This methid displays a reconfigure option in the integration and is
-        # different to options.
-        # It can be used to reconfigure any of the data submitted when first installed.
-        # This is optional and can be removed if you do not want to allow reconfiguration.
-        errors: dict[str, str] = {}
-        config_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
-
-        if user_input is not None:
-            try:
-                user_input[CONF_HOST] = config_entry.data[CONF_HOST]
-                await validate_input(self.hass, user_input)
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-            else:
-                return self.async_update_reload_and_abort(
-                    config_entry,
-                    unique_id=config_entry.unique_id,
-                    data={**config_entry.data, **user_input},
-                    reason="reconfigure_successful",
+        if user_input is not None and isinstance(self.__flow_config, UserStepData):
+            areas = {
+                area_id: AreaConfig(
+                    name=user_input[f"area_{area_id}_name"],
+                    enabled=user_input[f"area_{area_id}_enabled"],
                 )
-        return self.async_show_form(
-            step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_USERNAME, default=config_entry.data[CONF_USERNAME]
-                    ): str,
-                    vol.Required(CONF_PASSWORD): str,
-                }
-            ),
-            errors=errors,
-        )
-
-
-class ExampleOptionsFlowHandler(OptionsFlow):
-    """Handles the options flow."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
-
-    async def async_step_init(self, user_input=None):
-        """Handle options flow."""
-        if user_input is not None:
-            options = self.config_entry.options | user_input
-            return self.async_create_entry(title="", data=options)
-
-        # It is recommended to prepopulate options fields with default values if available.
-        # These will be the same default values you use on your coordinator for setting variable values
-        # if the option has not been set.
-        data_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): (vol.All(vol.Coerce(int), vol.Clamp(min=MIN_SCAN_INTERVAL))),
+                for area_id in range(1, self.__flow_config.max_areas + 1)
             }
+
+            self.__flow_config = AreasStepData(
+                host=self.__flow_config.host,
+                port=self.__flow_config.port,
+                serial_number=self.__flow_config.serial_number,
+                credentials=self.__flow_config.credentials,
+                max_areas=self.__flow_config.max_areas,
+                max_zones=self.__flow_config.max_zones,
+                areas=areas
+            )
+            return await self.async_step_config_zones()
+
+        schema_dict = {}
+        max_areas = self.__flow_config.max_areas if isinstance(self.__flow_config, UserStepData) else DEFAULT_MAX_AREAS
+        for area_id in range(1, max_areas + 1):
+            schema_dict[vol.Required(f"area_{area_id}_enabled", default=True)] = cv.boolean
+            schema_dict[vol.Required(f"area_{area_id}_name", default=f"Area {area_id}")] = cv.string
+
+        return self.async_show_form(
+            step_id="config_areas",
+            data_schema=vol.Schema(schema_dict),
+            errors={},
         )
 
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+    async def async_step_config_zones(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
 
+        if user_input is not None and isinstance(self.__flow_config, AreasStepData):
+            return self.async_create_entry(
+                title=f"Arrowhead Alarm {self.__flow_config.serial_number}",
+                data={
+                    "host": self.__flow_config.host,
+                    "port": self.__flow_config.port,
+                    "serial_number": self.__flow_config.serial_number,
+                    "username":
+                        self.__flow_config.credentials.username
+                        if self.__flow_config.credentials else None,
+                    "password":
+                        self.__flow_config.credentials.password
+                        if self.__flow_config.credentials else None,
+                    "areas": {
+                        area_id: {
+                            "name": area.name,
+                            "enabled": area.enabled,
+                        }
+                        for area_id, area in self.__flow_config.areas.items()
+                    },
+                    "zones": {
+                        zone_id: {
+                            "name": user_input[f"zone_{zone_id}_name"],
+                            "enabled": user_input[f"zone_{zone_id}_enabled"],
+                        }
+                        for zone_id in range(1, self.__flow_config.max_zones + 1)
+                    }
+                },
+            )
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
+        schema_dict = {}
+        max_zones = self.__flow_config.max_zones \
+            if isinstance(self.__flow_config, AreasStepData) \
+            else DEFAULT_MAX_ZONES
+        for zone_id in range(1, max_zones + 1):
+            schema_dict[vol.Required(f"zone_{zone_id}_name", default=f"Zone {zone_id}")] = cv.string
+            schema_dict[vol.Required(f"zone_{zone_id}_enabled", default=True)] = cv.boolean
 
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+        return self.async_show_form(
+            step_id="config_zones",
+            data_schema=vol.Schema(schema_dict),
+            errors={},
+        )
