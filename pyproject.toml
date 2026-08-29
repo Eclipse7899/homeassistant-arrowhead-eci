@@ -1,0 +1,45 @@
+[project]
+name = "homeassistant-arrowhead-eci"
+version = "0.1.0"
+description = "Home Assistant custom integration"
+requires-python = ">=3.13"
+dependencies = [
+    "homeassistant",
+    "arrowhead-alarm",
+    "voluptuous"
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-homeassistant-custom-component",
+    "ruff",
+    "ty",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty]
+python-version = "3.13"
+
+[tool.ty.environment]
+root = ["custom_components"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

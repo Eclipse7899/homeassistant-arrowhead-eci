@@ -1,0 +1,9 @@
+{
+  "domain": "arrowhead_eci",
+  "name": "Arrowhead ECI ",
+  "codeowners": [
+    "@Eclipse7899"
+  ],
+  "documentation": "https://github.com/Eclipse7899/homeassistant-arrowhead-eci",
+  "requirements": ["arrowhead_alarm==2.0.0"]
+}
