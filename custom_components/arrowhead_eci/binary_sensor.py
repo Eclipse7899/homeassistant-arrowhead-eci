@@ -1,6 +1,6 @@
 from abc import ABC
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -60,6 +60,7 @@ class ArrowheadZoneAlarmSensor(ArrowheadBinarySensorBase):
         self._attr_name = f"Zone {zone_name} Alarm"
         self._attr_unique_id = f"zone_{zone_id}_alarm"
         self._attr_device_info = get_device_info(config)
+        self._attr_device_class = BinarySensorDeviceClass.SAFETY
 
     @property
     def is_on(self) -> bool | None:
@@ -77,6 +78,7 @@ class ArrowheadZoneTroubleSensor(ArrowheadBinarySensorBase):
         super().__init__(zone_id, zone_name, coordinator, config)
         self._attr_name = f"Zone {zone_name} Trouble"
         self._attr_unique_id = f"zone_{zone_id}_trouble"
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property
     def is_on(self) -> bool | None:
@@ -110,6 +112,7 @@ class ArrowheadZoneRadioBatteryLowSensor(ArrowheadBinarySensorBase):
         super().__init__(zone_id, zone_name, coordinator, config)
         self._attr_name = f"Zone {zone_name} Radio Battery Low"
         self._attr_unique_id = f"zone_{zone_id}_radio_battery_low"
+        self._attr_device_class = BinarySensorDeviceClass.BATTERY
 
     @property
     def is_on(self) -> bool | None:
@@ -127,7 +130,7 @@ class ArrowheadZoneClosedSensor(ArrowheadBinarySensorBase):
         super().__init__(zone_id, zone_name, coordinator, config)
         self._attr_name = f"Zone {zone_name} Closed"
         self._attr_unique_id = f"zone_{zone_id}_closed"
-
+        self._attr_device_class = BinarySensorDeviceClass.OPENING
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.zones[self._zone_id].zone_closed
@@ -143,6 +146,7 @@ class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
         super().__init__(zone_id, zone_name, coordinator, config)
         self._attr_name = f"Zone {zone_name} Sensor Watch Alarm"
         self._attr_unique_id = f"zone_{zone_id}_sensor_watch_alarm"
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property
     def is_on(self) -> bool | None:
@@ -160,6 +164,7 @@ class ArrowheadZoneSuperviseAlarmSensor(ArrowheadBinarySensorBase):
         self._attr_name = f"Zone {zone_name} Supervise Alarm"
         self._attr_unique_id = f"zone_{zone_id}_supervise_alarm"
         self._attr_device_info = get_device_info(config)
+        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property
     def is_on(self) -> bool | None:
