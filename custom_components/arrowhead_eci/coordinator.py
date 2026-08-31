@@ -50,6 +50,9 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
     async def connect(self):
         await self._client.connect()
 
+    async def _async_update_data(self):
+        return self.state
+
     def _on_panel_state_update(self, state: PanelState):
         self.state = state
         self.async_set_updated_data({"panel_state": state})

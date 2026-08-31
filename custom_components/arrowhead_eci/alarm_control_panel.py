@@ -76,7 +76,7 @@ class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity)
     def code_format(self) -> CodeFormat | None:
         """Return the code format."""
         return CodeFormat.NUMBER
-
+    
     @override
     def code_arm_required(self) -> bool:
         """Whether the code is required for arm actions."""
