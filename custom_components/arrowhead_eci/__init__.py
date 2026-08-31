@@ -21,7 +21,7 @@ PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL
 ]
 
-async def async_setup(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
     config = FlowConfigModel(**config_entry.data)
 
     coord = ArrowheadEciDataUpdateCoordinator(hass, config)
