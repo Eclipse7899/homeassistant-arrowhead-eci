@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
-from .models import FlowConfigModel
+from .models import EciConfigModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class EciRuntimeData(TypedDict):
     panel_state: PanelState
 
 class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
-    def __init__(self, hass: HomeAssistant, config: FlowConfigModel):
+    def __init__(self, hass: HomeAssistant, config: EciConfigModel):
         super().__init__(
             hass,
             _LOGGER,

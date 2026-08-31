@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.arrowhead_eci.const import DOMAIN
 from custom_components.arrowhead_eci.coordinator import ArrowheadEciDataUpdateCoordinator
-from custom_components.arrowhead_eci.models import FlowConfigModel
+from custom_components.arrowhead_eci.models import EciConfigModel
 
 type EciConfigEntry = ConfigEntry[RuntimeData]
 
@@ -22,7 +22,7 @@ PLATFORMS: list[Platform] = [
 ]
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
-    config = FlowConfigModel(**config_entry.data)
+    config = EciConfigModel(**config_entry.data)
 
     coord = ArrowheadEciDataUpdateCoordinator(hass, config)
 

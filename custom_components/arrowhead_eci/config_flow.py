@@ -23,7 +23,7 @@ from homeassistant.const import (
 from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
 
 from .const import DOMAIN
-from .models import AreaConfigModel, FlowConfigModel, ZoneConfigModel
+from .models import AreaConfigModel, EciConfigModel, ZoneConfigModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
 
         if user_input is not None and isinstance(self.__flow_config, AreasStepData):
-            config = FlowConfigModel(
+            config = EciConfigModel(
                 host=self.__flow_config.host,
                 port=self.__flow_config.port,
                 serial_number=self.__flow_config.serial_number,

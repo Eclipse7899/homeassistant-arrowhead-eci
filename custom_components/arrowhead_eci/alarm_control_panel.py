@@ -1,6 +1,5 @@
 """Arrowhead Alarm Panel alarm control panel platform."""
 import logging
-from typing import override
 
 from arrowhead_alarm import AlarmState
 from homeassistant.components.alarm_control_panel import (
@@ -13,10 +12,13 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from custom_components.arrowhead_eci import ArrowheadEciDataUpdateCoordinator, EciConfigEntry
+from custom_components.arrowhead_eci import (
+    ArrowheadEciDataUpdateCoordinator,
+    EciConfigEntry,
+    EciConfigModel,
+)
 
 from .const import DOMAIN
 
@@ -28,11 +30,12 @@ async def async_setup_entry(
     config_entry: EciConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    config = EciConfigModel(**config_entry.data)
     coordinator = config_entry.runtime_data.coordinator
     
     area_control_panels = [
-        ArrowheadAlarmAreaControlPanel(area_id, area["enabled"], coordinator, config_entry)
-        for area_id, area in config_entry.data["areas"].items()
+        ArrowheadAlarmAreaControlPanel(area_id, area.name, area.enabled, config, coordinator)
+        for area_id, area in config.areas.items()
     ]
 
     async_add_entities(area_control_panels)
@@ -44,48 +47,33 @@ class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity)
     def __init__(
         self,
         area_id: int,
+        name: str,
         is_enabled: bool,
+        config: EciConfigModel,
         coordinator: ArrowheadEciDataUpdateCoordinator,
-        config_entry: EciConfigEntry,
     ) -> None:
         """Initialize the alarm control panel."""
         super().__init__(coordinator)  # ty: ignore[invalid-argument-type]
         self.area_id = area_id
-        self.is_enabled = is_enabled
         self.coordinator: ArrowheadEciDataUpdateCoordinator = coordinator
-        self.config_entry = config_entry
 
-    def device_info(self) -> DeviceInfo | None:
-        return DeviceInfo(
-            name=f"Alarm Panel - AreaConfigModel {self.area_id}",
-            identifiers={(DOMAIN, f"area_{self.area_id}"
-                                  f"-{self.config_entry.data['serial_number']}")},
-            manufacturer="Arrowhead Alarm Products",
+        self._attr_name = f"Eci Alarm Panel - {name}"
+        self._attr_unique_id = f"area_{area_id}_alarm_panel"
+
+        self._attr_supported_features = (
+            AlarmControlPanelEntityFeature.ARM_AWAY | AlarmControlPanelEntityFeature.ARM_HOME
         )
 
-    @override
-    def enabled(self) -> bool:
-        """Return whether the area is enabled."""
-        return self.is_enabled
-    
-    @override
-    def name(self) -> str | UndefinedType | None:
-        return f"Arrowhead Alarm AreaConfigModel {self.area_id}"
-
-    @override
-    def code_format(self) -> CodeFormat | None:
-        """Return the code format."""
-        return CodeFormat.NUMBER
-    
-    @override
-    def code_arm_required(self) -> bool:
-        """Whether the code is required for arm actions."""
-        return False
-
-    @override
-    def supported_features(self) -> AlarmControlPanelEntityFeature:
-        """Return the list of supported features."""
-        return AlarmControlPanelEntityFeature.ARM_AWAY | AlarmControlPanelEntityFeature.ARM_HOME
+        self._attr_code_format = CodeFormat.NUMBER
+        self._attr_code_arm_required = False
+        self._attr_code_disarm_required = True
+        self._attr_available = is_enabled
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"eci_alarm_{config.serial_number}")},
+            manufacturer="Arrowhead Alarm Products",
+            name=f"Eci Alarm Panel - {config.serial_number}",
+            serial_number=config.serial_number,
+        )
 
     @property
     def alarm_state(self) -> AlarmControlPanelState:

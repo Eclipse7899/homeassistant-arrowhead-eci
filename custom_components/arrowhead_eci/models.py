@@ -11,7 +11,7 @@ class ZoneConfigModel(BaseModel):
     enabled: bool
 
 
-class FlowConfigModel(BaseModel):
+class EciConfigModel(BaseModel):
     host: str
     port: int
     serial_number: str
