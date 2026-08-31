@@ -39,6 +39,13 @@ async def async_setup_entry(
                 ]
             )
 
+    for area_id, area in config.areas.items():
+        async_add_entities(
+            [
+                ArrowheadAreaReadyBinarySensor(area_id, area.name, coordinator, config),
+            ]
+        )
+
     async_add_entities(
         [
             ArrowheadReadyToArmSensor(coordinator, config),
@@ -77,7 +84,7 @@ class ArrowheadOutputBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return self.coordinator.state.outputs[self._output_id].on
 
 
-class ArrowheadBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
+class ArrowheadZoneBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
     def __init__(
         self,
         zone_id: int,
@@ -93,7 +100,30 @@ class ArrowheadBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
         self._attr_device_info = get_device_info(config)
 
 
-class ArrowheadZoneAlarmSensor(ArrowheadBinarySensorBase):
+class ArrowheadAreaReadyBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    def __init__(
+        self,
+        area_id: int,
+        area_name: str,
+        coordinator: ArrowheadEciDataUpdateCoordinator,
+        config: EciConfigModel,
+    ) -> None:
+        super().__init__(coordinator) # ty: ignore[invalid-argument-type]
+        self._area_id = area_id
+        self._area_name = area_name
+        self._config = config
+        self.coordinator: ArrowheadEciDataUpdateCoordinator = coordinator
+        self._attr_device_info = get_device_info(config)
+        self._attr_name = f"{area_name} Ready to arm"
+        self._attr_unique_id = "area_{area_id}_ready_to_arm"
+        self._attr_device_class = BinarySensorDeviceClass.SAFETY
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.state.areas[self._area_id].ready_to_arm
+
+
+class ArrowheadZoneAlarmSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -112,7 +142,7 @@ class ArrowheadZoneAlarmSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].alarm
 
 
-class ArrowheadZoneTroubleSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneTroubleSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -130,7 +160,7 @@ class ArrowheadZoneTroubleSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].trouble_alarm
 
 
-class ArrowheadZoneBypassedSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneBypassedSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -147,7 +177,7 @@ class ArrowheadZoneBypassedSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].bypassed
 
 
-class ArrowheadZoneRadioBatteryLowSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneRadioBatteryLowSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -165,7 +195,7 @@ class ArrowheadZoneRadioBatteryLowSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].radio_battery_low
 
 
-class ArrowheadZoneClosedSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneClosedSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -183,7 +213,7 @@ class ArrowheadZoneClosedSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].closed
 
 
-class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -201,7 +231,7 @@ class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].sensor_watch_alarm
 
 
-class ArrowheadZoneSuperviseAlarmSensor(ArrowheadBinarySensorBase):
+class ArrowheadZoneSuperviseAlarmSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         zone_id: int,
@@ -220,7 +250,7 @@ class ArrowheadZoneSuperviseAlarmSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.zones[self._zone_id].supervise_alarm
 
 
-class ArrowheadReadyToArmSensor(ArrowheadBinarySensorBase):
+class ArrowheadReadyToArmSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -236,7 +266,7 @@ class ArrowheadReadyToArmSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.ready_to_arm
 
 
-class ArrowheadBatteryFaultSensor(ArrowheadBinarySensorBase):
+class ArrowheadBatteryFaultSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -253,7 +283,7 @@ class ArrowheadBatteryFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.battery_fault
 
 
-class ArrowheadMainsFaultSensor(ArrowheadBinarySensorBase):
+class ArrowheadMainsFaultSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -270,7 +300,7 @@ class ArrowheadMainsFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.mains_fault
 
 
-class ArrowheadTamperSensor(ArrowheadBinarySensorBase):
+class ArrowheadTamperSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -287,7 +317,7 @@ class ArrowheadTamperSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.tamper_fault
 
 
-class ArrowheadDialerFaultSensor(ArrowheadBinarySensorBase):
+class ArrowheadDialerFaultSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -304,7 +334,7 @@ class ArrowheadDialerFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.dialer_fault
 
 
-class ArrowheadDialerLineFaultSensor(ArrowheadBinarySensorBase):
+class ArrowheadDialerLineFaultSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -321,7 +351,7 @@ class ArrowheadDialerLineFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.dialer_line_fault
 
 
-class ArrowheadFuseFaultSensor(ArrowheadBinarySensorBase):
+class ArrowheadFuseFaultSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
@@ -338,7 +368,7 @@ class ArrowheadFuseFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.fuse_fault
 
 
-class ArrowheadMonitoringStationActiveSensor(ArrowheadBinarySensorBase):
+class ArrowheadMonitoringStationActiveSensor(ArrowheadZoneBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
