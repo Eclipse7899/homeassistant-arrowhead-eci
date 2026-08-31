@@ -4,12 +4,11 @@ from enum import Enum
 from typing import TypedDict
 
 from arrowhead_alarm import ArmingMode, LoginCredentials, Mode2Client, PanelState
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
+from .models import FlowConfigModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,18 +26,18 @@ class EciRuntimeData(TypedDict):
     panel_state: PanelState
 
 class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, config: FlowConfigModel):
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=None,
         )
-        self.host = config_entry.data[CONF_HOST]
-        self.port = config_entry.data[CONF_PORT]
-        self.user = config_entry.data[CONF_USERNAME]
-        self.pwd = config_entry.data[CONF_PASSWORD]
-        
+        self.host = config.host
+        self.port = config.port
+        self.user = config.username
+        self.pwd = config.password
+
         if self.user is None or self.pwd is None:
             creds = None
         else:
@@ -48,7 +47,8 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
         self._client.state_publisher.subscribe(self._on_panel_state_update)
         self.state = self._client.state
 
-
+    async def connect(self):
+        await self._client.connect()
 
     def _on_panel_state_update(self, state: PanelState):
         self.state = state

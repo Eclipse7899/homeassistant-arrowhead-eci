@@ -57,7 +57,7 @@ class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity)
 
     def device_info(self) -> DeviceInfo | None:
         return DeviceInfo(
-            name=f"Alarm Panel - Area {self.area_id}",
+            name=f"Alarm Panel - AreaConfigModel {self.area_id}",
             identifiers={(DOMAIN, f"area_{self.area_id}"
                                   f"-{self.config_entry.data['serial_number']}")},
             manufacturer="Arrowhead Alarm Products",
@@ -70,7 +70,7 @@ class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity)
     
     @override
     def name(self) -> str | UndefinedType | None:
-        return f"Arrowhead Alarm Area {self.area_id}"
+        return f"Arrowhead Alarm AreaConfigModel {self.area_id}"
 
     @override
     def code_format(self) -> CodeFormat | None:

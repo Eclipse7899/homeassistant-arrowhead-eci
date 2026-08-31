@@ -23,6 +23,7 @@ from homeassistant.const import (
 from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
 
 from .const import DOMAIN
+from .models import AreaConfigModel, FlowConfigModel, ZoneConfigModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -180,7 +181,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         max_areas = self.__flow_config.max_areas if isinstance(self.__flow_config, UserStepData) else DEFAULT_MAX_AREAS
         for area_id in range(1, max_areas + 1):
             schema_dict[vol.Required(f"area_{area_id}_enabled", default=True)] = cv.boolean
-            schema_dict[vol.Required(f"area_{area_id}_name", default=f"Area {area_id}")] = cv.string
+            schema_dict[vol.Required(f"area_{area_id}_name", default=f"AreaConfigModel {area_id}")] = cv.string
 
         return self.async_show_form(
             step_id="config_areas",
@@ -194,33 +195,38 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
 
         if user_input is not None and isinstance(self.__flow_config, AreasStepData):
+            config = FlowConfigModel(
+                host=self.__flow_config.host,
+                port=self.__flow_config.port,
+                serial_number=self.__flow_config.serial_number,
+                username=(
+                    self.__flow_config.credentials.username
+                    if self.__flow_config.credentials
+                    else None
+                ),
+                password=(
+                    self.__flow_config.credentials.password
+                    if self.__flow_config.credentials
+                    else None
+                ),
+                areas={
+                    area_id: AreaConfigModel(
+                        name=area.name,
+                        enabled=area.enabled,
+                    )
+                    for area_id, area in self.__flow_config.areas.items()
+                },
+                zones={
+                    zone_id: ZoneConfigModel(
+                        name=user_input[f"zone_{zone_id}_name"],
+                        enabled=user_input[f"zone_{zone_id}_enabled"],
+                    )
+                    for zone_id in range(1, self.__flow_config.max_zones + 1)
+                },
+            )
             return self.async_create_entry(
                 title=f"Arrowhead Alarm {self.__flow_config.serial_number}",
-                data={
-                    "host": self.__flow_config.host,
-                    "port": self.__flow_config.port,
-                    "serial_number": self.__flow_config.serial_number,
-                    "username":
-                        self.__flow_config.credentials.username
-                        if self.__flow_config.credentials else None,
-                    "password":
-                        self.__flow_config.credentials.password
-                        if self.__flow_config.credentials else None,
-                    "areas": {
-                        area_id: {
-                            "name": area.name,
-                            "enabled": area.enabled,
-                        }
-                        for area_id, area in self.__flow_config.areas.items()
-                    },
-                    "zones": {
-                        zone_id: {
-                            "name": user_input[f"zone_{zone_id}_name"],
-                            "enabled": user_input[f"zone_{zone_id}_enabled"],
-                        }
-                        for zone_id in range(1, self.__flow_config.max_zones + 1)
-                    }
-                },
+                data=config.model_dump(),
             )
 
         schema_dict = {}
@@ -228,7 +234,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
             if isinstance(self.__flow_config, AreasStepData) \
             else DEFAULT_MAX_ZONES
         for zone_id in range(1, max_zones + 1):
-            schema_dict[vol.Required(f"zone_{zone_id}_name", default=f"Zone {zone_id}")] = cv.string
+            schema_dict[vol.Required(f"zone_{zone_id}_name", default=f"ZoneConfigModel {zone_id}")] = cv.string
             schema_dict[vol.Required(f"zone_{zone_id}_enabled", default=True)] = cv.boolean
 
         return self.async_show_form(
