@@ -60,6 +60,14 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
     async def disarm(self, area: int, pin: int):
         """Disarm the alarm."""
         await self._client.disarm(area, pin)
+
+    async def bypass_zone(self, zone: int):
+        """Bypass a zone."""
+        await self._client.bypass_zone(zone)
+
+    async def unbypass_zone(self, zone: int):
+        """Unbypass a zone."""
+        await self._client.unbypass_zone(zone)
         
     async def arm_stay(self, area: int):
         """Arm the alarm in stay mode."""

@@ -19,6 +19,7 @@ class RuntimeData:
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
+    Platform.SWITCH,
 ]
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
