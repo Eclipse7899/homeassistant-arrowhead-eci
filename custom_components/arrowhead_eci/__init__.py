@@ -16,11 +16,13 @@ class RuntimeData:
 
     coordinator: ArrowheadEciDataUpdateCoordinator
 
+
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
 ]
+
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
     config = EciConfigModel(**config_entry.data)
@@ -30,9 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -
     await coord.connect()
     await coord.async_config_entry_first_refresh()
 
-    config_entry.async_on_unload(
-        config_entry.add_update_listener(_async_update_listener)
-    )
+    config_entry.async_on_unload(config_entry.add_update_listener(_async_update_listener))
 
     config_entry.runtime_data = RuntimeData(coord)
 

@@ -1,4 +1,5 @@
 """Arrowhead Alarm Panel alarm control panel platform."""
+
 import logging
 
 from arrowhead_alarm import AlarmState
@@ -31,7 +32,7 @@ async def async_setup_entry(
 ) -> None:
     config = EciConfigModel(**config_entry.data)
     coordinator = config_entry.runtime_data.coordinator
-    
+
     area_control_panels = [
         ArrowheadAlarmAreaControlPanel(area_id, area.name, area.enabled, config, coordinator)
         for area_id, area in config.areas.items()
@@ -92,7 +93,6 @@ class ArrowheadAlarmAreaControlPanel(CoordinatorEntity, AlarmControlPanelEntity)
                 return AlarmControlPanelState.ARMING
             case _:
                 return AlarmControlPanelState.DISARMED
-
 
     @callback
     def _handle_coordinator_update(self) -> None:

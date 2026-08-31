@@ -1,4 +1,5 @@
 """Data update coordinator for Arrowhead Alarm Panel."""
+
 import logging
 from enum import Enum
 from typing import TypedDict
@@ -21,9 +22,12 @@ class ConnectionState(Enum):
     CONNECTED = "connected"
     RECONNECTING = "reconnecting"
 
+
 class EciRuntimeData(TypedDict):
     """Class to hold your data."""
+
     panel_state: PanelState
+
 
 class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
     def __init__(self, hass: HomeAssistant, config: EciConfigModel):
@@ -68,11 +72,19 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
     async def unbypass_zone(self, zone: int):
         """Unbypass a zone."""
         await self._client.unbypass_zone(zone)
-        
+
     async def arm_stay(self, area: int):
         """Arm the alarm in stay mode."""
         await self._client.arm_area(area, ArmingMode.STAY)
-        
+
     async def arm_away(self, area: int):
         """Arm the alarm in away mode."""
         await self._client.arm_area(area, ArmingMode.AWAY)
+
+    async def turn_on_output(self, output: int):
+        """Turn on an output."""
+        await self._client.output_on(output)
+
+    async def turn_off_output(self, output: int):
+        """Turn off an output."""
+        await self._client.output_off(output)

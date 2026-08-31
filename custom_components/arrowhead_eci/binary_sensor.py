@@ -31,6 +31,37 @@ async def async_setup_entry(
             ]
         )
 
+    for output_id, output in config.outputs.items():
+        if not output.manual_control:
+            async_add_entities(
+                [
+                    ArrowheadOutputBinarySensor(output_id, output.name, coordinator, config),
+                ]
+            )
+
+
+class ArrowheadOutputBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    def __init__(
+        self,
+        output_id: int,
+        output_name: str,
+        coordinator: ArrowheadEciDataUpdateCoordinator,
+        config: EciConfigModel,
+    ) -> None:
+        super().__init__(coordinator)  # ty: ignore[invalid-argument-type]
+        self._output_id = output_id
+        self._output_name = output_name
+        self._config = config
+        self.coordinator: ArrowheadEciDataUpdateCoordinator = coordinator
+        self._attr_device_info = get_device_info(config)
+        self._attr_name = f"Output {output_name}"
+        self._attr_unique_id = f"output_{output_id}"
+        self._attr_device_class = BinarySensorDeviceClass.POWER
+        self._attr_icon = "mdi:toggle-switch-variant"
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.state.outputs[self._output_id].on
 
 class ArrowheadBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
     def __init__(
@@ -38,7 +69,7 @@ class ArrowheadBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
         zone_id: int,
         zone_name: str,
         coordinator: ArrowheadEciDataUpdateCoordinator,
-        config: EciConfigModel
+        config: EciConfigModel,
     ) -> None:
         super().__init__(coordinator)  # ty: ignore[invalid-argument-type]
         self._zone_id = zone_id
@@ -101,6 +132,7 @@ class ArrowheadZoneBypassedSensor(ArrowheadBinarySensorBase):
     def is_on(self) -> bool | None:
         return self.coordinator.state.zones[self._zone_id].bypassed
 
+
 class ArrowheadZoneRadioBatteryLowSensor(ArrowheadBinarySensorBase):
     def __init__(
         self,
@@ -131,9 +163,11 @@ class ArrowheadZoneClosedSensor(ArrowheadBinarySensorBase):
         self._attr_name = f"Zone {zone_name} Closed"
         self._attr_unique_id = f"zone_{zone_id}_closed"
         self._attr_device_class = BinarySensorDeviceClass.OPENING
+
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.zones[self._zone_id].zone_closed
+
 
 class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
     def __init__(
@@ -151,6 +185,7 @@ class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.zones[self._zone_id].sensor_watch_alarm
+
 
 class ArrowheadZoneSuperviseAlarmSensor(ArrowheadBinarySensorBase):
     def __init__(

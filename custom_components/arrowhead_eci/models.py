@@ -11,6 +11,12 @@ class ZoneConfigModel(BaseModel):
     enabled: bool
 
 
+class OutputConfigModel(BaseModel):
+    name: str
+    enabled: bool
+    manual_control: bool
+
+
 class EciConfigModel(BaseModel):
     host: str
     port: int
@@ -19,3 +25,4 @@ class EciConfigModel(BaseModel):
     password: str | None = None
     areas: dict[int, AreaConfigModel]
     zones: dict[int, ZoneConfigModel]
+    outputs: dict[int, OutputConfigModel]
