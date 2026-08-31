@@ -4,7 +4,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from custom_components.arrowhead_eci.const import DOMAIN
 from custom_components.arrowhead_eci.coordinator import ArrowheadEciDataUpdateCoordinator
 from custom_components.arrowhead_eci.models import EciConfigModel
 
