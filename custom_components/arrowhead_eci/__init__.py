@@ -17,7 +17,8 @@ class RuntimeData:
     coordinator: ArrowheadEciDataUpdateCoordinator
 
 PLATFORMS: list[Platform] = [
-    Platform.ALARM_CONTROL_PANEL
+    Platform.ALARM_CONTROL_PANEL,
+    Platform.BINARY_SENSOR,
 ]
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: EciConfigEntry) -> bool:
