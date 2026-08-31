@@ -6,7 +6,7 @@ from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from arrowhead_alarm import LoginCredentials, Mode2Client, PanelVersion
+from arrowhead_alarm import LoginCredentials, Mode2Client, PanelInfo
 from arrowhead_alarm.exceptions import AuthError
 from arrowhead_alarm.protocol.defaults import (
     DEFAULT_MAX_AREAS,
@@ -85,12 +85,14 @@ class ZoneStepData(AreasStepData):
 FlowConfig = UserStepData | AreasStepData | ZoneStepData | None
 
 
-async def validate_input(host, port, credentials: LoginCredentials | None) -> PanelVersion:
+async def validate_input(host, port, credentials: LoginCredentials | None) -> PanelInfo:
     client = Mode2Client(host, port, credentials)
     await client.connect()
-    version = await client.query_version()
+    info = client.state.info
+    if info is None:
+        raise ProtocolError("Failed to retrieve panel info")
     await client.disconnect()
-    return version
+    return info
 
 
 class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -195,9 +197,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         for area_id in range(1, max_areas + 1):
             schema_dict[vol.Required(f"area_{area_id}_enabled", default=True)] = cv.boolean
-            schema_dict[
-                vol.Required(f"area_{area_id}_name", default=f"area {area_id}")
-            ] = cv.string
+            schema_dict[vol.Required(f"area_{area_id}_name", default=f"area {area_id}")] = cv.string
 
         return self.async_show_form(
             step_id="config_areas",
@@ -238,9 +238,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
             else DEFAULT_MAX_ZONES
         )
         for zone_id in range(1, max_zones + 1):
-            schema_dict[
-                vol.Required(f"zone_{zone_id}_name", default=f"zone {zone_id}")
-            ] = cv.string
+            schema_dict[vol.Required(f"zone_{zone_id}_name", default=f"zone {zone_id}")] = cv.string
             schema_dict[vol.Required(f"zone_{zone_id}_enabled", default=True)] = cv.boolean
 
         return self.async_show_form(
@@ -294,9 +292,9 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
             else DEFAULT_MAX_OUTPUTS
         )
         for output_id in range(1, max_outputs + 1):
-            schema_dict[
-                vol.Required(f"output_{output_id}_name", default=f"output {output_id}")
-            ] = cv.string
+            schema_dict[vol.Required(f"output_{output_id}_name", default=f"output {output_id}")] = (
+                cv.string
+            )
             schema_dict[vol.Required(f"output_{output_id}_enabled", default=True)] = cv.boolean
             schema_dict[vol.Required(f"output_{output_id}_manual_control", default=False)] = (
                 cv.boolean

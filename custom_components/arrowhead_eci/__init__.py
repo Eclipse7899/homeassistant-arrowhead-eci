@@ -55,5 +55,5 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: EciConfigEntry) 
 
     # Unload platforms and return result
     coord = config_entry.runtime_data.coordinator
-    await coord._client.disconnect()
+    await coord.disconnect()
     return await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)

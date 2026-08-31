@@ -50,10 +50,12 @@ class ArrowheadEciDataUpdateCoordinator(DataUpdateCoordinator[EciRuntimeData]):
         self._client = Mode2Client(host=self.host, port=self.port, credentials=creds)
         self._client.state_publisher.subscribe(self._on_panel_state_update)
         self.state = self._client.state
-        self.version = self._client.version
 
     async def connect(self):
         await self._client.connect()
+
+    async def disconnect(self):
+        await self._client.disconnect()
 
     async def _async_update_data(self):
         return self.state

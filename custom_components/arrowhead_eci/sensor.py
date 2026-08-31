@@ -20,9 +20,11 @@ async def async_setup_entry(
     config = EciConfigModel(**config_entry.data)
     coordinator = config_entry.runtime_data.coordinator
 
-    async_add_entities([
-        ArrowheadVersionSensor(coordinator, config),
-    ])
+    async_add_entities(
+        [
+            ArrowheadVersionSensor(coordinator, config),
+        ]
+    )
 
 
 class ArrowheadVersionSensor(CoordinatorEntity, SensorEntity):
@@ -31,7 +33,7 @@ class ArrowheadVersionSensor(CoordinatorEntity, SensorEntity):
         coordinator: ArrowheadEciDataUpdateCoordinator,
         config: EciConfigModel,
     ) -> None:
-        super().__init__(coordinator) # ty: ignore[invalid-argument-type]
+        super().__init__(coordinator)  # ty: ignore[invalid-argument-type]
 
         self.coordinator: ArrowheadEciDataUpdateCoordinator = coordinator
 
@@ -42,10 +44,10 @@ class ArrowheadVersionSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        version = self.coordinator.version
-        if version is None:
+        info = self.coordinator.state.info
+        if info is None:
             return None
 
-        firmware = version.firmware_version
+        firmware = info.firmware_version
 
-        return f"v{firmware.major_version}.{firmware.minor_version}.{firmware.patch_version}"
+        return f"v{firmware.major}.{firmware.minor}.{firmware.patch}"

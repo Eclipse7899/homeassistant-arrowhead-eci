@@ -44,16 +44,14 @@ async def async_setup_entry(
             ArrowheadReadyToArmSensor(coordinator, config),
             ArrowheadBatteryFaultSensor(coordinator, config),
             ArrowheadMainsFaultSensor(coordinator, config),
-            ArrowheadTamperAlarmTriggeredSensor(coordinator, config),
-            ArrowheadLineFaultSensor(coordinator, config),
+            ArrowheadTamperSensor(coordinator, config),
             ArrowheadDialerFaultSensor(coordinator, config),
             ArrowheadDialerLineFaultSensor(coordinator, config),
             ArrowheadFuseFaultSensor(coordinator, config),
             ArrowheadMonitoringStationActiveSensor(coordinator, config),
-            ArrowheadDialerActiveSensor(coordinator, config),
-            ArrowheadCodeTamperSensor(coordinator, config),
         ]
     )
+
 
 class ArrowheadOutputBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def __init__(
@@ -77,6 +75,7 @@ class ArrowheadOutputBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.outputs[self._output_id].on
+
 
 class ArrowheadBinarySensorBase(ABC, CoordinatorEntity, BinarySensorEntity):
     def __init__(
@@ -181,7 +180,7 @@ class ArrowheadZoneClosedSensor(ArrowheadBinarySensorBase):
 
     @property
     def is_on(self) -> bool | None:
-        return self.coordinator.state.zones[self._zone_id].zone_closed
+        return self.coordinator.state.zones[self._zone_id].closed
 
 
 class ArrowheadZoneSensorWatchAlarmSensor(ArrowheadBinarySensorBase):
@@ -219,6 +218,7 @@ class ArrowheadZoneSuperviseAlarmSensor(ArrowheadBinarySensorBase):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.zones[self._zone_id].supervise_alarm
+
 
 class ArrowheadReadyToArmSensor(ArrowheadBinarySensorBase):
     def __init__(
@@ -270,38 +270,21 @@ class ArrowheadMainsFaultSensor(ArrowheadBinarySensorBase):
         return self.coordinator.state.mains_fault
 
 
-class ArrowheadTamperAlarmTriggeredSensor(ArrowheadBinarySensorBase):
+class ArrowheadTamperSensor(ArrowheadBinarySensorBase):
     def __init__(
         self,
         coordinator: ArrowheadEciDataUpdateCoordinator,
         config: EciConfigModel,
     ) -> None:
         super().__init__(0, "", coordinator, config)
-        self._attr_name = "Tamper Alarm Triggered"
-        self._attr_unique_id = "tamper_alarm_triggered"
+        self._attr_name = "Tamper Fault"
+        self._attr_unique_id = "tamper_fault"
         self._attr_device_info = get_device_info(config)
         self._attr_device_class = BinarySensorDeviceClass.PROBLEM
 
     @property
     def is_on(self) -> bool | None:
-        return self.coordinator.state.tamper_alarm_triggered
-
-
-class ArrowheadLineFaultSensor(ArrowheadBinarySensorBase):
-    def __init__(
-        self,
-        coordinator: ArrowheadEciDataUpdateCoordinator,
-        config: EciConfigModel,
-    ) -> None:
-        super().__init__(0, "", coordinator, config)
-        self._attr_name = "Line Fault"
-        self._attr_unique_id = "line_fault"
-        self._attr_device_info = get_device_info(config)
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-
-    @property
-    def is_on(self) -> bool | None:
-        return self.coordinator.state.line_fault
+        return self.coordinator.state.tamper_fault
 
 
 class ArrowheadDialerFaultSensor(ArrowheadBinarySensorBase):
@@ -370,37 +353,3 @@ class ArrowheadMonitoringStationActiveSensor(ArrowheadBinarySensorBase):
     @property
     def is_on(self) -> bool | None:
         return self.coordinator.state.monitoring_station_active
-
-
-class ArrowheadDialerActiveSensor(ArrowheadBinarySensorBase):
-    def __init__(
-        self,
-        coordinator: ArrowheadEciDataUpdateCoordinator,
-        config: EciConfigModel,
-    ) -> None:
-        super().__init__(0, "", coordinator, config)
-        self._attr_name = "Dialer Active"
-        self._attr_unique_id = "dialer_active"
-        self._attr_device_info = get_device_info(config)
-        self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
-
-    @property
-    def is_on(self) -> bool | None:
-        return self.coordinator.state.dialer_active
-
-
-class ArrowheadCodeTamperSensor(ArrowheadBinarySensorBase):
-    def __init__(
-        self,
-        coordinator: ArrowheadEciDataUpdateCoordinator,
-        config: EciConfigModel,
-    ) -> None:
-        super().__init__(0, "", coordinator, config)
-        self._attr_name = "Tamper Sensor"
-        self._attr_unique_id = "tamper_sensor"
-        self._attr_device_info = get_device_info(config)
-        self._attr_device_class = BinarySensorDeviceClass.PROBLEM
-
-    @property
-    def is_on(self) -> bool | None:
-        return self.coordinator.state.code_tamper
