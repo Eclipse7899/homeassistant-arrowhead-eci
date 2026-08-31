@@ -21,6 +21,7 @@ PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
+    Platform.SENSOR,
 ]
 
 

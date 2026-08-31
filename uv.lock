@@ -244,11 +244,11 @@ wheels = [
 
 [[package]]
 name = "arrowhead-alarm"
-version = "2.0.4"
+version = "2.0.7"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b0/37/c625e71c342c0ce5388694ffd4ea194e9507ad520dc7327a5e3c85f0da63/arrowhead_alarm-2.0.4.tar.gz", hash = "sha256:2dcc6ac7218c5ce3bb2371894dc7ee5ef31dd05fe131efc23504ed95500895ce", size = 70906, upload-time = "2026-08-30T10:49:48.366Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/aa/78478bd77b296ebf458e4d05b0fd307a60d1adb4a2234ed899dd04864e6a/arrowhead_alarm-2.0.7.tar.gz", hash = "sha256:82aadf8c9c7a0187d57ed7cf87f4fb06f85b56846742bccc2017a55abc2fce09", size = 71048, upload-time = "2026-08-31T05:21:32.946Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/d2/464c886fcf88629aabc7bf0d0886d0c34d6b2bdeb1b28ff4f5a6a561ef75/arrowhead_alarm-2.0.4-py3-none-any.whl", hash = "sha256:f3508a0177d4a885033ccd8bf3e70f771118e1af2ce552035b71c055237bd8f9", size = 32051, upload-time = "2026-08-30T10:49:47.455Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/22/1ca0856d036ca57f463e1315239cae3dd5865298255824de6132cfbd73dc/arrowhead_alarm-2.0.7-py3-none-any.whl", hash = "sha256:9583a72558332a935ee7778f9be80f34f3f3ae21d197dcd4ac66a2233554c8f9", size = 32114, upload-time = "2026-08-31T05:21:31.807Z" },
 ]
 
 [[package]]
@@ -1168,7 +1168,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arrowhead-alarm", specifier = ">=2.0.4" },
+    { name = "arrowhead-alarm", specifier = ">=2.0.7" },
     { name = "homeassistant", specifier = "==2026.8.0" },
     { name = "pydantic" },
     { name = "voluptuous" },
