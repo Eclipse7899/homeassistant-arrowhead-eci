@@ -196,7 +196,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         for area_id in range(1, max_areas + 1):
             schema_dict[vol.Required(f"area_{area_id}_enabled", default=True)] = cv.boolean
             schema_dict[
-                vol.Required(f"area_{area_id}_name", default=f"AreaConfigModel {area_id}")
+                vol.Required(f"area_{area_id}_name", default=f"area {area_id}")
             ] = cv.string
 
         return self.async_show_form(
@@ -239,7 +239,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         for zone_id in range(1, max_zones + 1):
             schema_dict[
-                vol.Required(f"zone_{zone_id}_name", default=f"ZoneConfigModel {zone_id}")
+                vol.Required(f"zone_{zone_id}_name", default=f"zone {zone_id}")
             ] = cv.string
             schema_dict[vol.Required(f"zone_{zone_id}_enabled", default=True)] = cv.boolean
 
@@ -295,7 +295,7 @@ class ArrowheadEciConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         for output_id in range(1, max_outputs + 1):
             schema_dict[
-                vol.Required(f"output_{output_id}_name", default=f"OutputConfigModel {output_id}")
+                vol.Required(f"output_{output_id}_name", default=f"output {output_id}")
             ] = cv.string
             schema_dict[vol.Required(f"output_{output_id}_enabled", default=True)] = cv.boolean
             schema_dict[vol.Required(f"output_{output_id}_manual_control", default=False)] = (

@@ -62,7 +62,7 @@ class ArrowheadZoneBypassSwitch(CoordinatorEntity, SwitchEntity):
         await self.coordinator.unbypass_zone(self._zone_id)
 
     @property
-    async def is_on(self):
+    def is_on(self):
         """Return True if the zone is bypassed."""
         return self.coordinator.state.zones[self._zone_id].bypassed
 
@@ -96,6 +96,6 @@ class ArrowheadOutputSwitch(CoordinatorEntity, SwitchEntity):
         await self.coordinator.turn_off_output(self._output_id)
 
     @property
-    async def is_on(self):
+    def is_on(self):
         """Return True if the output is on."""
         return self.coordinator.state.outputs[self._output_id].on
